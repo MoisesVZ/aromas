@@ -64,7 +64,7 @@ export function AboutSection() {
           <div className="animate-on-scroll opacity-0 translate-x-[-50px] transition-all duration-1000 relative">
             <div className="relative">
               <img
-                src="/images/tequila.png"
+                src="/images/tequila.jpeg"
                 alt="Perfume craftsmanship"
                 className="rounded-xl w-full"
               />

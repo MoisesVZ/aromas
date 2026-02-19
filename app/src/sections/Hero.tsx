@@ -32,11 +32,11 @@ export function Hero({ onNavigate }: HeroProps) {
       ref={heroRef}
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {/* Background Image - CAMBIADA A perfumes.jpeg */}
+      {/* Background Image */}
       <div className="absolute inset-0">
         <img
           src="/images/perfumes.jpeg"
-          alt="Luxury perfume"
+          alt="Luxury perfume background"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[#0B0B0C] via-[#0B0B0C]/80 to-transparent" />
@@ -105,14 +105,15 @@ export function Hero({ onNavigate }: HeroProps) {
             </div>
           </div>
 
-          {/* Right - Featured Product */}
+          {/* Right - Featured Product (Lattafa) */}
           <div className="hidden lg:block animate-on-scroll opacity-0 scale-95 transition-all duration-1000 delay-300">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-radial from-[#D7A04D]/20 to-transparent rounded-full blur-3xl" />
+              {/* CAMBIO: Ruta de imagen actualizada a lattafa.jpeg */}
               <img
-                src="https://images.unsplash.com/photo-1541643600914-78b084683601?w=600&q=80"
-                alt="Featured perfume"
-                className="relative z-10 w-full max-w-md mx-auto drop-shadow-2xl"
+                src="/images/lattafa.jpeg"
+                alt="Lattafa Exclusive"
+                className="relative z-10 w-full max-w-md mx-auto drop-shadow-2xl rounded-2xl"
               />
               {/* Floating Badge */}
               <div className="absolute top-10 right-10 bg-[#D7A04D] text-[#0B0B0C] px-4 py-2 rounded-full font-semibold text-sm animate-bounce">
