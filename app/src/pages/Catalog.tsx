@@ -8,26 +8,26 @@ interface CatalogProps {
   onNavigate: (page: string) => void;
 }
 
-// --- SUB-COMPONENTE PARA GESTIONAR LA CARGA DE IMÁGENES ---
-// Esto evita que el celular se congele intentando pintar imágenes gigantes
+// --- 1. COMPONENTE DE IMAGEN OPTIMIZADA (SOLUCIÓN PANTALLA NEGRA MÓVIL) ---
+// Este componente evita que el celular se congele cargando todo a la vez.
 const ProductImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   return (
     <div className={`relative overflow-hidden bg-[#1A1A1C] ${className}`}>
-      {/* Skeleton (Cargando...) - Se muestra mientras la imagen baja */}
+      {/* Esqueleto (Gris parpadeante) mientras carga */}
       <div 
         className={`absolute inset-0 bg-[#2A2A2C] animate-pulse transition-opacity duration-500 ${
           isLoaded ? 'opacity-0' : 'opacity-100'
         }`} 
       />
       
-      {/* Imagen Real */}
+      {/* Imagen Real con carga diferida */}
       <img
         src={src || 'https://via.placeholder.com/300?text=No+Image'}
         alt={alt}
-        loading="lazy"   // CLAVE: Solo carga si está cerca de la pantalla
-        decoding="async" // CLAVE: No bloquea el scroll del celular
+        loading="lazy"   // Solo carga cuando aparece en pantalla
+        decoding="async" // No bloquea el scroll del celular
         onLoad={() => setIsLoaded(true)}
         className={`w-full h-full object-cover transition-all duration-700 ${
           isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
@@ -39,41 +39,32 @@ const ProductImage = ({ src, alt, className }: { src: string; alt: string; class
 // -----------------------------------------------------------
 
 export function Catalog({ onNavigate }: CatalogProps) {
-  // Estado para datos reales
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [filterType, setFilterType] = useState<'all' | 'Mujer' | 'Hombre' | 'Unisex'>('all');
   const [sortBy, setSortBy] = useState<'default' | 'price-low' | 'price-high' | 'name'>('default');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { addToCart } = useCart();
   const sectionRef = useRef<HTMLDivElement>(null);
 
-  // 1. Cargar productos reales de Supabase
   useEffect(() => {
     fetchProducts();
   }, []);
 
   const fetchProducts = async () => {
     setLoading(true);
-    // Traemos solo los activos
     const { data, error } = await supabase
       .from('products')
       .select('*')
       .eq('active', true);
 
-    if (error) {
-      console.error('Error cargando catálogo:', error);
-    } else {
-      setProducts((data as any[]) || []);
-    }
+    if (error) console.error('Error cargando catálogo:', error);
+    else setProducts((data as any[]) || []);
     setLoading(false);
   };
 
-  // Efecto de animación scroll (mantenido)
   useEffect(() => {
-    if (loading) return; // Esperar a que cargue
-    
+    if (loading) return;
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -82,16 +73,13 @@ export function Catalog({ onNavigate }: CatalogProps) {
       },
       { threshold: 0.1 }
     );
-    // Pequeño delay para asegurar que el DOM se pintó
     setTimeout(() => {
       const elements = sectionRef.current?.querySelectorAll('.animate-on-scroll');
       elements?.forEach((el) => observer.observe(el));
     }, 100);
-
     return () => observer.disconnect();
-  }, [loading, products, filterType]); // Agregué filterType para re-animar al filtrar
+  }, [loading, products, filterType]);
 
-  // 2. Filtrado
   const filteredProducts = products.filter((product) => {
     if (filterType === 'all') return true;
     return (product as any).category === filterType;
@@ -135,7 +123,6 @@ export function Catalog({ onNavigate }: CatalogProps) {
         {/* Filters Bar */}
         <div className="animate-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-100 sticky top-20 z-30 bg-[#0B0B0C]/95 backdrop-blur-md py-4 mb-8 border-y border-[#2A2A2C]">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Filter Buttons */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
               {[
                 { key: 'all', label: 'Todos' },
@@ -157,7 +144,6 @@ export function Catalog({ onNavigate }: CatalogProps) {
               ))}
             </div>
 
-            {/* Sort & View */}
             <div className="flex items-center gap-4">
               <div className="relative">
                 <select
@@ -214,12 +200,12 @@ export function Catalog({ onNavigate }: CatalogProps) {
               key={product.id}
               onClick={() => onNavigate(`product-${product.id}`)}
               className={`group cursor-pointer ${viewMode === 'list' ? 'flex gap-6 p-4 bg-[#141416] border border-[#2A2A2C] rounded-xl hover:border-[#D7A04D]/50 transition-colors' : ''}`}
-              // Limitamos el delay en móvil para que no parezca que no carga
               style={{ animationDelay: `${Math.min(index * 50, 500)}ms` }}
             >
               {viewMode === 'grid' ? (
                 <div className="card-dark overflow-hidden transition-all duration-500 group-hover:border-[#D7A04D]/50 group-hover:shadow-lg group-hover:shadow-[#D7A04D]/10">
-                  {/* Image con Lazy Loading Mejorado */}
+                  
+                  {/* --- IMAGEN Y BOTÓN AÑADIR (AQUÍ ESTÁ EL CAMBIO VISUAL) --- */}
                   <div className="relative aspect-[3/4] w-full">
                     <ProductImage 
                         src={product.image_url} 
@@ -227,17 +213,18 @@ export function Catalog({ onNavigate }: CatalogProps) {
                         className="w-full h-full"
                     />
                     
-                    {/* Quick Add */}
-                    <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 z-10">
+                    {/* Botón flotante estilo Dorado (Restaurado como pediste) */}
+                    <div className="absolute inset-x-4 bottom-4 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 z-10">
                       <button
                         onClick={(e) => handleAddToCart(e, product)}
-                        className="w-full btn-gold text-sm flex items-center justify-center gap-2 shadow-lg"
+                        className="w-full bg-[#D7A04D] text-[#0B0B0C] font-semibold py-3 rounded-lg shadow-lg flex items-center justify-center gap-2 hover:bg-[#F4F2EE] transition-colors"
                       >
-                        <ShoppingBag size={16} />
+                        <ShoppingBag size={18} />
                         Añadir
                       </button>
                     </div>
                   </div>
+                  {/* -------------------------------------------------------- */}
 
                   {/* Info */}
                   <div className="p-4">
@@ -246,7 +233,6 @@ export function Catalog({ onNavigate }: CatalogProps) {
                     </h3>
                     <div className="flex items-center justify-between">
                       <span className="text-[#D7A04D] font-bold">{formatPrice(product.price)}</span>
-                      {/* Mostrar categoría si existe */}
                       {(product as any).category && (
                         <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-[#2A2A2C] text-[#B9B2A6]">
                             {(product as any).category}
@@ -307,13 +293,8 @@ export function Catalog({ onNavigate }: CatalogProps) {
           opacity: 1 !important;
           transform: translateY(0) !important;
         }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );
