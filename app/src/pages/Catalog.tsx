@@ -44,8 +44,6 @@ export function Catalog({ onNavigate }: CatalogProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { addToCart } = useCart();
   
-  // Eliminamos el IntersectionObserver complejo para simplificar la carga en móvil
-  
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -86,7 +84,10 @@ export function Catalog({ onNavigate }: CatalogProps) {
 
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
-    addToCart(product);
+    // Validar stock antes de añadir
+    if (product.stock > 0) {
+        addToCart(product);
+    }
   };
 
   return (
@@ -127,7 +128,7 @@ export function Catalog({ onNavigate }: CatalogProps) {
             </div>
 
             <div className="flex items-center gap-4">
-               {/* Selector Sort oculto en movil muy pequeño si estorba, o visible */}
+               {/* Selector Sort */}
               <div className="relative">
                 <select
                   value={sortBy}
@@ -165,7 +166,6 @@ export function Catalog({ onNavigate }: CatalogProps) {
         {!loading && (
         <div className={
           viewMode === 'grid'
-            // SOLUCIÓN TAMAÑO MÓVIL: grid-cols-2 (2 productos por fila)
             ? 'grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6'
             : 'space-y-4'
         }>
@@ -186,18 +186,29 @@ export function Catalog({ onNavigate }: CatalogProps) {
                         index={index}
                     />
                     
-                    {/* SOLUCIÓN BOTÓN: Se oculta con translate-y-full y opacity-0. 
-                        Solo aparece en group-hover (mouse encima). 
-                        En móvil, al tocar la tarjeta, actúa como hover momentáneo. */}
+                    {/* BOTÓN FLOTANTE (Grid) */}
+                    {/* Si no hay stock, no mostramos el hover de añadir, o mostramos 'Agotado' fijo/deshabilitado */}
                     <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-20">
                       <button
                         onClick={(e) => handleAddToCart(e, product)}
-                        className="w-full bg-[#D7A04D] text-[#0B0B0C] text-sm font-bold py-2 rounded shadow-lg flex items-center justify-center gap-2 hover:bg-[#F4F2EE] active:scale-95 transition-all"
+                        disabled={product.stock === 0}
+                        className={`w-full text-sm font-bold py-2 rounded shadow-lg flex items-center justify-center gap-2 transition-all ${
+                            product.stock > 0 
+                            ? 'bg-[#D7A04D] text-[#0B0B0C] hover:bg-[#F4F2EE] active:scale-95' 
+                            : 'bg-[#2A2A2C] text-[#666] cursor-not-allowed'
+                        }`}
                       >
                         <ShoppingBag size={16} />
-                        Añadir
+                        {product.stock > 0 ? 'Añadir' : 'Agotado'}
                       </button>
                     </div>
+                    
+                    {/* Etiqueta de Agotado visual sobre la imagen si quieres que sea muy obvio */}
+                    {product.stock === 0 && (
+                        <div className="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
+                            Agotado
+                        </div>
+                    )}
                   </div>
 
                   {/* INFO DEL PRODUCTO */}
@@ -220,19 +231,29 @@ export function Catalog({ onNavigate }: CatalogProps) {
                   </div>
                 </div>
               ) : (
-                /* VISTA DE LISTA (SOLO ESCRITORIO/TABLET USUALMENTE) */
+                /* VISTA DE LISTA */
                 <>
                   <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden">
                     <ProductImage src={product.image_url} alt={product.name} index={index} />
+                    {product.stock === 0 && (
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-xs font-bold">
+                             AGOTADO
+                         </div>
+                    )}
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <h3 className="text-[#F4F2EE] font-medium mb-1">{product.name}</h3>
                     <p className="text-[#D7A04D] font-bold">{formatPrice(product.price)}</p>
                     <button
                         onClick={(e) => handleAddToCart(e, product)}
-                        className="mt-2 w-fit px-4 py-2 bg-[#2A2A2C] text-[#F4F2EE] text-xs rounded hover:bg-[#D7A04D] hover:text-black transition-colors"
+                        disabled={product.stock === 0}
+                        className={`mt-2 w-fit px-4 py-2 text-xs rounded transition-colors ${
+                            product.stock > 0
+                            ? 'bg-[#2A2A2C] text-[#F4F2EE] hover:bg-[#D7A04D] hover:text-black'
+                            : 'bg-[#1A1A1C] text-[#666] cursor-not-allowed'
+                        }`}
                       >
-                        Añadir
+                         {product.stock > 0 ? 'Añadir' : 'Agotado'}
                     </button>
                   </div>
                 </>
