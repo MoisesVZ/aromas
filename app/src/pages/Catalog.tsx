@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Filter, Grid, List, ChevronDown, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { supabase } from '@/lib/supabase';
@@ -6,6 +6,8 @@ import type { Product } from '@/types';
 
 interface CatalogProps {
   onNavigate: (page: string) => void;
+  // CAMBIO: Recibimos el filtro inicial opcional
+  initialFilter?: string;
 }
 
 // --- COMPONENTE DE IMAGEN OPTIMIZADA ---
@@ -24,7 +26,6 @@ const ProductImage = ({ src, alt, index }: { src: string; alt: string; index: nu
       <img
         src={src || 'https://via.placeholder.com/300?text=No+Image'}
         alt={alt}
-        // SOLUCIÓN CARGA MÓVIL: Las primeras 4 cargan inmediato (eager), el resto lazy
         loading={index < 4 ? "eager" : "lazy"} 
         decoding="async"
         onLoad={() => setIsLoaded(true)}
@@ -36,16 +37,21 @@ const ProductImage = ({ src, alt, index }: { src: string; alt: string; index: nu
   );
 };
 
-export function Catalog({ onNavigate }: CatalogProps) {
+export function Catalog({ onNavigate, initialFilter = 'all' }: CatalogProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState<'all' | 'Mujer' | 'Hombre' | 'Unisex'>('all');
   
-  // CAMBIO 1: El estado inicial de sortBy ahora es 'name' (alfabético por defecto)
+  // CAMBIO: Inicializamos el estado con el filtro que recibimos
+  const [filterType, setFilterType] = useState<string>(initialFilter);
+  
   const [sortBy, setSortBy] = useState<'name' | 'price-low' | 'price-high'>('name');
-  
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { addToCart } = useCart();
+  
+  // CAMBIO: Si el prop initialFilter cambia (ej: vienen desde otra categoría), actualizamos el estado
+  useEffect(() => {
+    setFilterType(initialFilter);
+  }, [initialFilter]);
   
   useEffect(() => {
     fetchProducts();
@@ -68,20 +74,16 @@ export function Catalog({ onNavigate }: CatalogProps) {
     return (product as any).category === filterType;
   });
 
-  // CAMBIO 2: Lógica de ordenamiento avanzada
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     // REGLA DE ORO: Agotados siempre al final
-    // Si 'a' tiene stock y 'b' no, 'a' va primero (-1)
     if (a.stock > 0 && b.stock === 0) return -1;
-    // Si 'a' no tiene stock y 'b' sí, 'b' va primero (1)
     if (a.stock === 0 && b.stock > 0) return 1;
 
-    // Si ambos tienen stock o ambos están agotados, aplicamos el orden seleccionado
     switch (sortBy) {
       case 'price-low': return a.price - b.price;
       case 'price-high': return b.price - a.price;
       case 'name': return a.name.localeCompare(b.name);
-      default: return a.name.localeCompare(b.name); // Por defecto nombre
+      default: return a.name.localeCompare(b.name);
     }
   });
 
@@ -95,7 +97,6 @@ export function Catalog({ onNavigate }: CatalogProps) {
 
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
-    // Validar stock antes de añadir
     if (product.stock > 0) {
         addToCart(product);
     }
@@ -126,7 +127,7 @@ export function Catalog({ onNavigate }: CatalogProps) {
               ].map((filter) => (
                 <button
                   key={filter.key}
-                  onClick={() => setFilterType(filter.key as any)}
+                  onClick={() => setFilterType(filter.key)}
                   className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                     filterType === filter.key
                       ? 'bg-[#D7A04D] text-[#0B0B0C]'
@@ -147,8 +148,8 @@ export function Catalog({ onNavigate }: CatalogProps) {
                   className="appearance-none bg-[#141416] border border-[#2A2A2C] rounded-lg px-4 py-2 pr-8 text-[#F4F2EE] text-xs sm:text-sm focus:outline-none focus:border-[#D7A04D]"
                 >
                   <option value="name">Nombre (A-Z)</option>
-                  <option value="price-low">Precio: Menor a Mayor</option>
-                  <option value="price-high">Precio: Mayor a Menor</option>
+                  <option value="price-low">Precio: Menor</option>
+                  <option value="price-high">Precio: Mayor</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-[#666] pointer-events-none" size={14} />
               </div>

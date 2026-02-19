@@ -14,7 +14,10 @@ import { Checkout } from '@/pages/Checkout';
 import { Admin } from '@/pages/Admin';
 import { Contact } from '@/pages/Contact';
 
-function HomePage({ onNavigate }: { onNavigate: (page: string) => void }) {
+// Modificamos la interfaz de navegación para aceptar un filtro opcional
+type NavigateFunction = (page: string, initialFilter?: string) => void;
+
+function HomePage({ onNavigate }: { onNavigate: NavigateFunction }) {
   return (
     <>
       <Hero onNavigate={onNavigate} />
@@ -29,13 +32,22 @@ function HomePage({ onNavigate }: { onNavigate: (page: string) => void }) {
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [productId, setProductId] = useState<string | null>(null);
+  // Nuevo estado para guardar el filtro inicial del catálogo
+  const [catalogFilter, setCatalogFilter] = useState<string>('all');
 
   // Handle navigation
-  const handleNavigate = (page: string) => {
+  const handleNavigate = (page: string, initialFilter?: string) => {
     if (page.startsWith('product-')) {
       setProductId(page.replace('product-', ''));
       setCurrentPage('product');
     } else {
+      // Si vamos al catálogo y traemos un filtro, lo guardamos
+      if (page === 'catalog' && initialFilter) {
+        setCatalogFilter(initialFilter);
+      } else if (page === 'catalog' && !initialFilter) {
+         // Si vamos al catálogo sin filtro específico, reseteamos a 'all'
+         setCatalogFilter('all');
+      }
       setCurrentPage(page);
       setProductId(null);
     }
@@ -48,9 +60,10 @@ function App() {
       case 'home':
         return <HomePage onNavigate={handleNavigate} />;
       case 'catalog':
-        return <Catalog onNavigate={handleNavigate} />;
+        // Pasamos el filtro inicial al Catálogo
+        return <Catalog onNavigate={handleNavigate} initialFilter={catalogFilter} />;
       case 'product':
-        return productId ? <ProductDetail productId={productId} onNavigate={handleNavigate} /> : <Catalog onNavigate={handleNavigate} />;
+        return productId ? <ProductDetail productId={productId} onNavigate={handleNavigate} /> : <Catalog onNavigate={handleNavigate} initialFilter={catalogFilter} />;
       case 'checkout':
         return <Checkout onNavigate={handleNavigate} />;
       case 'about':
@@ -93,7 +106,7 @@ function App() {
 }
 
 // About Page Component
-function AboutPage({ onNavigate }: { onNavigate: (page: string) => void }) {
+function AboutPage({ onNavigate }: { onNavigate: NavigateFunction }) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);

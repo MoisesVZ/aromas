@@ -18,11 +18,12 @@ export function FeaturedProducts({ onNavigate }: FeaturedProductsProps) {
   }, []);
 
   const fetchFeatured = async () => {
-    // Traer los últimos 4 productos creados
+    // Traer los últimos 4 productos creados QUE TENGAN STOCK
     const { data } = await supabase
       .from('products')
       .select('*')
       .eq('active', true)
+      .gt('stock', 0) // CAMBIO: Solo productos con stock mayor a 0
       .order('created_at', { ascending: false })
       .limit(4);
     
@@ -60,7 +61,7 @@ export function FeaturedProducts({ onNavigate }: FeaturedProductsProps) {
     addToCart(product);
   };
 
-  if (products.length === 0) return null; // No mostrar sección si no hay productos
+  if (products.length === 0) return null;
 
   return (
     <section ref={sectionRef} className="py-24 bg-[#0B0B0C]">
@@ -108,7 +109,7 @@ export function FeaturedProducts({ onNavigate }: FeaturedProductsProps) {
                       onClick={(e) => handleAddToCart(e, product)}
                       className="w-full btn-gold text-sm flex items-center justify-center gap-2"
                     >
-                        <ShoppingBag size={14} /> Añadir
+                      <ShoppingBag size={14} /> Añadir
                     </button>
                   </div>
                 </div>

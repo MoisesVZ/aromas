@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import { ArrowRight, User, Users, Sparkles } from 'lucide-react';
 
 interface CategoriesProps {
-  onNavigate: (page: string) => void;
+  // CAMBIO: Ahora aceptamos el segundo parámetro opcional 'filter'
+  onNavigate: (page: string, filter?: string) => void;
 }
 
 export function Categories({ onNavigate }: CategoriesProps) {
@@ -77,7 +78,8 @@ export function Categories({ onNavigate }: CategoriesProps) {
           {categories.map((category, index) => (
             <div
               key={category.id}
-              onClick={() => onNavigate('catalog')}
+              // CAMBIO: Al hacer clic, enviamos 'catalog' Y el filtro ('Mujer', etc.)
+              onClick={() => onNavigate('catalog', category.filter)}
               className={`animate-on-scroll opacity-0 translate-y-8 transition-all duration-700 group cursor-pointer relative overflow-hidden rounded-xl`}
               style={{ transitionDelay: `${(index + 2) * 100}ms` }}
             >

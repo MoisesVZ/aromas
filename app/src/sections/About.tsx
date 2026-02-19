@@ -60,11 +60,11 @@ export function AboutSection() {
       <div className="section-padding max-w-7xl mx-auto">
         {/* Main Content */}
         <div className="grid lg:grid-cols-2 gap-16 items-center mb-24">
-          {/* Image */}
+          {/* Image - CAMBIADA A tequila.png */}
           <div className="animate-on-scroll opacity-0 translate-x-[-50px] transition-all duration-1000 relative">
             <div className="relative">
               <img
-                src="https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=800&q=80"
+                src="/images/tequila.png"
                 alt="Perfume craftsmanship"
                 className="rounded-xl w-full"
               />

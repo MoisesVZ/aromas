@@ -32,10 +32,10 @@ export function Hero({ onNavigate }: HeroProps) {
       ref={heroRef}
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
-      {/* Background Image */}
+      {/* Background Image - CAMBIADA A perfumes.jpeg */}
       <div className="absolute inset-0">
         <img
-          src="https://images.unsplash.com/photo-1594035910387-fea47794261f?w=1920&q=80"
+          src="/images/perfumes.jpeg"
           alt="Luxury perfume"
           className="w-full h-full object-cover"
         />
