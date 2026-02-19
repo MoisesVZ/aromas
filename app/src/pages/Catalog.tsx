@@ -8,6 +8,36 @@ interface CatalogProps {
   onNavigate: (page: string) => void;
 }
 
+// --- SUB-COMPONENTE PARA GESTIONAR LA CARGA DE IMÁGENES ---
+// Esto evita que el celular se congele intentando pintar imágenes gigantes
+const ProductImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <div className={`relative overflow-hidden bg-[#1A1A1C] ${className}`}>
+      {/* Skeleton (Cargando...) - Se muestra mientras la imagen baja */}
+      <div 
+        className={`absolute inset-0 bg-[#2A2A2C] animate-pulse transition-opacity duration-500 ${
+          isLoaded ? 'opacity-0' : 'opacity-100'
+        }`} 
+      />
+      
+      {/* Imagen Real */}
+      <img
+        src={src || 'https://via.placeholder.com/300?text=No+Image'}
+        alt={alt}
+        loading="lazy"   // CLAVE: Solo carga si está cerca de la pantalla
+        decoding="async" // CLAVE: No bloquea el scroll del celular
+        onLoad={() => setIsLoaded(true)}
+        className={`w-full h-full object-cover transition-all duration-700 ${
+          isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+        }`}
+      />
+    </div>
+  );
+};
+// -----------------------------------------------------------
+
 export function Catalog({ onNavigate }: CatalogProps) {
   // Estado para datos reales
   const [products, setProducts] = useState<Product[]>([]);
@@ -59,13 +89,11 @@ export function Catalog({ onNavigate }: CatalogProps) {
     }, 100);
 
     return () => observer.disconnect();
-  }, [loading, products]);
+  }, [loading, products, filterType]); // Agregué filterType para re-animar al filtrar
 
-  // 2. Filtrado (Usando 'category' de la BD que mapea a tu filtro)
+  // 2. Filtrado
   const filteredProducts = products.filter((product) => {
     if (filterType === 'all') return true;
-    // Asumimos que guardaste 'Mujer', 'Hombre', etc en la columna 'category'
-    // Si usaste otros nombres, ajusta esta línea.
     return (product as any).category === filterType;
   });
 
@@ -108,7 +136,7 @@ export function Catalog({ onNavigate }: CatalogProps) {
         <div className="animate-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-100 sticky top-20 z-30 bg-[#0B0B0C]/95 backdrop-blur-md py-4 mb-8 border-y border-[#2A2A2C]">
           <div className="flex flex-wrap items-center justify-between gap-4">
             {/* Filter Buttons */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
               {[
                 { key: 'all', label: 'Todos' },
                 { key: 'Mujer', label: 'Mujer' },
@@ -178,7 +206,7 @@ export function Catalog({ onNavigate }: CatalogProps) {
         {!loading && (
         <div className={`animate-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-300 ${
           viewMode === 'grid'
-            ? 'grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
             : 'space-y-4'
         }`}>
           {sortedProducts.map((product, index) => (
@@ -186,26 +214,27 @@ export function Catalog({ onNavigate }: CatalogProps) {
               key={product.id}
               onClick={() => onNavigate(`product-${product.id}`)}
               className={`group cursor-pointer ${viewMode === 'list' ? 'flex gap-6 p-4 bg-[#141416] border border-[#2A2A2C] rounded-xl hover:border-[#D7A04D]/50 transition-colors' : ''}`}
-              style={{ animationDelay: `${index * 50}ms` }}
+              // Limitamos el delay en móvil para que no parezca que no carga
+              style={{ animationDelay: `${Math.min(index * 50, 500)}ms` }}
             >
               {viewMode === 'grid' ? (
                 <div className="card-dark overflow-hidden transition-all duration-500 group-hover:border-[#D7A04D]/50 group-hover:shadow-lg group-hover:shadow-[#D7A04D]/10">
-                  {/* Image */}
-                  <div className="relative aspect-[3/4] overflow-hidden bg-[#0B0B0C]">
-                    <img
-                      src={product.image_url || 'https://via.placeholder.com/300?text=No+Image'}
-                      alt={product.name}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  {/* Image con Lazy Loading Mejorado */}
+                  <div className="relative aspect-[3/4] w-full">
+                    <ProductImage 
+                        src={product.image_url} 
+                        alt={product.name} 
+                        className="w-full h-full"
                     />
                     
                     {/* Quick Add */}
-                    <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500">
+                    <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 z-10">
                       <button
                         onClick={(e) => handleAddToCart(e, product)}
-                        className="w-full btn-gold text-sm flex items-center justify-center gap-2"
+                        className="w-full btn-gold text-sm flex items-center justify-center gap-2 shadow-lg"
                       >
                         <ShoppingBag size={16} />
-                        Añadir al carrito
+                        Añadir
                       </button>
                     </div>
                   </div>
@@ -219,7 +248,7 @@ export function Catalog({ onNavigate }: CatalogProps) {
                       <span className="text-[#D7A04D] font-bold">{formatPrice(product.price)}</span>
                       {/* Mostrar categoría si existe */}
                       {(product as any).category && (
-                        <span className="text-xs px-2 py-1 rounded bg-[#2A2A2C] text-[#B9B2A6]">
+                        <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-[#2A2A2C] text-[#B9B2A6]">
                             {(product as any).category}
                         </span>
                       )}
@@ -227,32 +256,32 @@ export function Catalog({ onNavigate }: CatalogProps) {
                   </div>
                 </div>
               ) : (
-                /* List View (simplificado) */
+                /* List View */
                 <>
-                  <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 overflow-hidden rounded-lg">
-                    <img
-                      src={product.image_url || 'https://via.placeholder.com/300'}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
+                  <div className="relative w-24 h-24 sm:w-40 sm:h-40 flex-shrink-0 overflow-hidden rounded-lg">
+                    <ProductImage 
+                        src={product.image_url} 
+                        alt={product.name}
+                        className="w-full h-full" 
                     />
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <h3 className="text-[#F4F2EE] font-semibold text-lg mb-2">{product.name}</h3>
-                        <p className="text-[#666] text-sm line-clamp-2 mb-3">{product.description || 'Sin descripción'}</p>
+                        <p className="text-[#666] text-sm line-clamp-2 mb-3 hidden sm:block">{product.description || 'Sin descripción'}</p>
                       </div>
                       <div className="text-right">
                         <span className="text-[#D7A04D] font-bold text-xl">{formatPrice(product.price)}</span>
                       </div>
                     </div>
-                    <div className="mt-4">
+                    <div className="mt-2 sm:mt-4">
                       <button
                         onClick={(e) => handleAddToCart(e, product)}
                         className="btn-gold text-sm flex items-center gap-2"
                       >
                         <ShoppingBag size={16} />
-                        Añadir al carrito
+                        Añadir
                       </button>
                     </div>
                   </div>
@@ -277,6 +306,13 @@ export function Catalog({ onNavigate }: CatalogProps) {
         .animate-visible {
           opacity: 1 !important;
           transform: translateY(0) !important;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
         }
       `}</style>
     </div>
