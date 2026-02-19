@@ -62,6 +62,7 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
       <div className="min-h-screen bg-[#0B0B0C] pt-24 pb-16 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-[#F4F2EE] mb-4">Producto no encontrado</h2>
+          {/* CORRECCIÓN 1: Aseguramos que lleve al catálogo */}
           <button onClick={() => onNavigate('catalog')} className="btn-gold">
             Volver al catálogo
           </button>
@@ -89,6 +90,7 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
     <div ref={sectionRef} className="min-h-screen bg-[#0B0B0C] pt-24 pb-16">
       <div className="section-padding max-w-7xl mx-auto">
         {/* Back Button */}
+        {/* CORRECCIÓN 2: Este es el botón principal de volver. Apunta a 'catalog' */}
         <button
           onClick={() => onNavigate('catalog')}
           className="animate-on-scroll opacity-0 translate-y-4 transition-all duration-500 inline-flex items-center gap-2 text-[#B9B2A6] hover:text-[#D7A04D] mb-8"
