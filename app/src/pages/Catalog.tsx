@@ -40,7 +40,10 @@ export function Catalog({ onNavigate }: CatalogProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'Mujer' | 'Hombre' | 'Unisex'>('all');
-  const [sortBy, setSortBy] = useState<'default' | 'price-low' | 'price-high' | 'name'>('default');
+  
+  // CAMBIO 1: El estado inicial de sortBy ahora es 'name' (alfabético por defecto)
+  const [sortBy, setSortBy] = useState<'name' | 'price-low' | 'price-high'>('name');
+  
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { addToCart } = useCart();
   
@@ -65,12 +68,20 @@ export function Catalog({ onNavigate }: CatalogProps) {
     return (product as any).category === filterType;
   });
 
+  // CAMBIO 2: Lógica de ordenamiento avanzada
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    // REGLA DE ORO: Agotados siempre al final
+    // Si 'a' tiene stock y 'b' no, 'a' va primero (-1)
+    if (a.stock > 0 && b.stock === 0) return -1;
+    // Si 'a' no tiene stock y 'b' sí, 'b' va primero (1)
+    if (a.stock === 0 && b.stock > 0) return 1;
+
+    // Si ambos tienen stock o ambos están agotados, aplicamos el orden seleccionado
     switch (sortBy) {
       case 'price-low': return a.price - b.price;
       case 'price-high': return b.price - a.price;
       case 'name': return a.name.localeCompare(b.name);
-      default: return 0;
+      default: return a.name.localeCompare(b.name); // Por defecto nombre
     }
   });
 
@@ -135,9 +146,9 @@ export function Catalog({ onNavigate }: CatalogProps) {
                   onChange={(e) => setSortBy(e.target.value as any)}
                   className="appearance-none bg-[#141416] border border-[#2A2A2C] rounded-lg px-4 py-2 pr-8 text-[#F4F2EE] text-xs sm:text-sm focus:outline-none focus:border-[#D7A04D]"
                 >
-                  <option value="default">Ordenar</option>
-                  <option value="price-low">Precio: Menor</option>
-                  <option value="price-high">Precio: Mayor</option>
+                  <option value="name">Nombre (A-Z)</option>
+                  <option value="price-low">Precio: Menor a Mayor</option>
+                  <option value="price-high">Precio: Mayor a Menor</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-[#666] pointer-events-none" size={14} />
               </div>
@@ -187,7 +198,6 @@ export function Catalog({ onNavigate }: CatalogProps) {
                     />
                     
                     {/* BOTÓN FLOTANTE (Grid) */}
-                    {/* Si no hay stock, no mostramos el hover de añadir, o mostramos 'Agotado' fijo/deshabilitado */}
                     <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-20">
                       <button
                         onClick={(e) => handleAddToCart(e, product)}
@@ -203,7 +213,7 @@ export function Catalog({ onNavigate }: CatalogProps) {
                       </button>
                     </div>
                     
-                    {/* Etiqueta de Agotado visual sobre la imagen si quieres que sea muy obvio */}
+                    {/* Etiqueta de Agotado visual sobre la imagen */}
                     {product.stock === 0 && (
                         <div className="absolute top-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
                             Agotado
