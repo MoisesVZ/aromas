@@ -30,7 +30,6 @@ interface AdminProps {
 
 type Tab = 'dashboard' | 'products' | 'orders'
 
-// MODIFICACIÓN 1: Agregamos category por defecto
 const EMPTY_FORM: Partial<Product> = {
   name: '',
   price: 0,
@@ -82,7 +81,6 @@ export function Admin({ onNavigate }: AdminProps) {
     const { data: { session } } = await supabase.auth.getSession()
     
     if (session) {
-      // Verificar si es admin
       const isAdmin = await verifyAdminRole(session.user.id)
       if (isAdmin) {
         setIsLoggedIn(true)
@@ -109,7 +107,6 @@ export function Admin({ onNavigate }: AdminProps) {
     }
   }
 
-  // --- Cargar productos si está logueado ---
   useEffect(() => {
     if (!isLoggedIn) return
     fetchProducts()
@@ -122,7 +119,6 @@ export function Admin({ onNavigate }: AdminProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isLoggedIn])
 
-  // --- 2. LOGIN REAL ---
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoginLoading(true)
@@ -161,21 +157,66 @@ export function Admin({ onNavigate }: AdminProps) {
     setSelectedOrder(null)
   }
 
-  // --- Orders (local) ---
-  const updateOrderStatus = (orderId: string, status: Order['status']) => {
-    const updatedOrders = orders.map((o) => (o.id === orderId ? { ...o, status } : o))
+  // --- Orders (local + Resta de Stock en Supabase) ---
+  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    // 1. Encontrar la orden actual
+    const currentOrder = orders.find(o => o.id === orderId);
+    if (!currentOrder) return;
+
+    // 2. LÓGICA DE STOCK: Si pasa a 'paid' (Pagado), restamos el stock en Supabase
+    if (newStatus === 'paid' && currentOrder.status === 'pending') {
+        try {
+            // Recorremos los items de la orden
+            for (const item of currentOrder.items) {
+                // Buscamos el producto actual en la BD para saber su stock real
+                const { data: productData, error: fetchError } = await supabase
+                    .from('products')
+                    .select('stock')
+                    .eq('id', item.id)
+                    .single();
+                
+                if (fetchError) {
+                    console.error(`Error obteniendo stock del producto ${item.id}:`, fetchError);
+                    continue; // Saltar al siguiente si hay error
+                }
+
+                // Calculamos el nuevo stock (evitando que baje de 0)
+                const newStock = Math.max(0, productData.stock - item.quantity);
+
+                // Actualizamos el stock en Supabase
+                const { error: updateError } = await supabase
+                    .from('products')
+                    .update({ stock: newStock })
+                    .eq('id', item.id);
+
+                if (updateError) {
+                    console.error(`Error actualizando stock del producto ${item.id}:`, updateError);
+                }
+            }
+            
+            // Recargamos los productos en el panel para ver el nuevo stock
+            fetchProducts();
+            alert(`Stock descontado correctamente para el pedido ${orderId}`);
+            
+        } catch (err) {
+            console.error('Error general actualizando stock:', err);
+            alert('Hubo un error al intentar descontar el stock.');
+        }
+    }
+
+    // 3. Actualizamos el estado visual de la orden (Local)
+    const updatedOrders = orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
     setOrders(updatedOrders)
     localStorage.setItem('aromas_orders', JSON.stringify(updatedOrders))
 
     if (selectedOrder?.id === orderId) {
-      setSelectedOrder({ ...selectedOrder, status })
+      setSelectedOrder({ ...selectedOrder, status: newStatus })
     }
   }
 
   // --- Products (Supabase) ---
   const fetchProducts = async () => {
     setLoadingProducts(true)
-    // MODIFICACIÓN 2: Agregamos 'category' a la consulta
     const { data, error } = await supabase
       .from('products')
       .select('id, name, price, stock, image_url, description, active, category')
@@ -208,7 +249,6 @@ export function Admin({ onNavigate }: AdminProps) {
       image_url: p.image_url,
       description: p.description,
       active: p.active,
-      // MODIFICACIÓN 3: Cargamos la categoría existente
       // @ts-ignore
       category: (p as any).category || 'Unisex' 
     })
@@ -253,7 +293,6 @@ export function Admin({ onNavigate }: AdminProps) {
   const handleSubmitProduct = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // MODIFICACIÓN 4: Incluimos category en el payload
     const payload: any = {
       name: (formData.name || '').trim(),
       price: Number(formData.price || 0),
@@ -655,7 +694,6 @@ export function Admin({ onNavigate }: AdminProps) {
                       />
                     </div>
 
-                    {/* MODIFICACIÓN 5: Input de Categoría/Género */}
                     <div>
                         <label className="block text-[#B9B2A6] text-sm mb-2">Categoría / Género</label>
                         <select
@@ -788,7 +826,6 @@ export function Admin({ onNavigate }: AdminProps) {
                   <thead>
                     <tr className="border-b border-[#2A2A2C]">
                       <th className="text-left py-3 px-4 text-[#B9B2A6] text-sm font-medium">Producto</th>
-                      {/* MODIFICACIÓN 6: Columna de Categoría */}
                       <th className="text-left py-3 px-4 text-[#B9B2A6] text-sm font-medium">Categoría</th>
                       <th className="text-left py-3 px-4 text-[#B9B2A6] text-sm font-medium">Precio</th>
                       <th className="text-left py-3 px-4 text-[#B9B2A6] text-sm font-medium">Stock</th>
@@ -831,7 +868,6 @@ export function Admin({ onNavigate }: AdminProps) {
                             </div>
                           </td>
 
-                          {/* MODIFICACIÓN 7: Mostrar Categoría */}
                           <td className="py-3 px-4 text-[#B9B2A6] text-sm">
                              {(product as any).category || 'Unisex'}
                           </td>
@@ -941,7 +977,7 @@ export function Admin({ onNavigate }: AdminProps) {
                                       : status === 'delivered'
                                       ? 'bg-green-500 text-white'
                                       : 'bg-red-500 text-white'
-                                    : 'bg-[#2A2A2C] text-[#B9B2A6]'
+                                    : 'bg-[#2A2A2C] text-[#B9B2A6] hover:bg-[#D7A04D]/10'
                                 }`}
                               >
                                 {status === 'pending'
@@ -982,6 +1018,13 @@ export function Admin({ onNavigate }: AdminProps) {
                             {selectedOrder.customer.city}, {selectedOrder.customer.region}
                           </p>
                         </div>
+                        {/* AQUI ESTABA EL ERROR: Agregamos "as any" para evitar que TypeScript llore */}
+                        {(selectedOrder.customer as any).notes && (
+                            <div>
+                                <p className="text-[#B9B2A6] text-sm">Notas</p>
+                                <p className="text-[#F4F2EE] italic">"{(selectedOrder.customer as any).notes}"</p>
+                            </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -990,7 +1033,7 @@ export function Admin({ onNavigate }: AdminProps) {
                     <h3 className="text-lg font-semibold text-[#F4F2EE] mb-4">Productos</h3>
                     <div className="space-y-4">
                       {selectedOrder.items.map((item: any, idx) => (
-                        <div key={idx} className="flex items-center gap-4 p-4 bg-[#0B0B0C] rounded-lg">
+                        <div key={idx} className="flex items-center gap-4 p-4 bg-[#0B0B0C] rounded-lg border border-[#2A2A2C]">
                           <img
                             src={item.image_url || item.image || 'https://via.placeholder.com/100?text=Aromas'}
                             alt={item.name}
@@ -998,11 +1041,11 @@ export function Admin({ onNavigate }: AdminProps) {
                           />
                           <div className="flex-1">
                             <p className="text-[#F4F2EE] font-medium">{item.name}</p>
-                            <p className="text-[#666] text-sm">{item.description || '—'}</p>
+                            <p className="text-[#666] text-sm line-clamp-1">{item.description || '—'}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-[#F4F2EE]">x{item.quantity}</p>
-                            <p className="text-[#D7A04D]">
+                            <p className="text-[#D7A04D] font-medium">
                               ${Number(item.price * item.quantity).toLocaleString('es-CL')}
                             </p>
                           </div>

@@ -78,7 +78,7 @@ export function Footer({ onNavigate }: FooterProps) {
             </p>
             <div className="flex items-center gap-4">
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/aromaselecodetupiel"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 bg-[#141416] border border-[#2A2A2C] rounded-full flex items-center justify-center text-[#B9B2A6] hover:text-[#D7A04D] hover:border-[#D7A04D] transition-colors"
@@ -86,7 +86,7 @@ export function Footer({ onNavigate }: FooterProps) {
                 <Instagram size={18} />
               </a>
               <a
-                href="mailto:contacto@aromas.cl"
+                href="mailto:aromaselecodetupiel@gmail.com"
                 className="w-10 h-10 bg-[#141416] border border-[#2A2A2C] rounded-full flex items-center justify-center text-[#B9B2A6] hover:text-[#D7A04D] hover:border-[#D7A04D] transition-colors"
               >
                 <Mail size={18} />
@@ -145,7 +145,9 @@ export function Footer({ onNavigate }: FooterProps) {
               </li>
               <li className="flex items-center gap-3">
                 <Mail size={18} className="text-[#D7A04D]" />
-                <span className="text-[#B9B2A6] text-sm">contacto@aromas.cl</span>
+                <span className="text-[#B9B2A6] text-sm break-all">
+                  aromaselecodetupiel@gmail.com
+                </span>
               </li>
             </ul>
           </div>

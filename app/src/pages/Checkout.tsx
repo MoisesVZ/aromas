@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowLeft, Check, Copy, CreditCard, Truck, User, MapPin, Mail, Phone, Package } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Check, Copy, CreditCard, Truck, User, MapPin, Mail, Phone, Package, Send } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import type { Order } from '@/types';
 
@@ -11,6 +11,7 @@ export function Checkout({ onNavigate }: CheckoutProps) {
   const { items, totalPrice, clearCart } = useCart();
   const [step, setStep] = useState<'form' | 'payment' | 'success'>('form');
   const [copied, setCopied] = useState(false);
+  const [orderId, setOrderId] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -21,6 +22,11 @@ export function Checkout({ onNavigate }: CheckoutProps) {
     notes: ''
   });
 
+  // Generar ID de orden al montar el componente
+  useEffect(() => {
+    setOrderId(`ORD-${Date.now()}`);
+  }, []);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-CL', {
       style: 'currency',
@@ -29,7 +35,32 @@ export function Checkout({ onNavigate }: CheckoutProps) {
     }).format(price);
   };
 
-  const shippingCost = totalPrice >= 50000 ? 0 : 3990;
+  // Lógica de costo de envío dinámico
+  const calculateShipping = () => {
+    // Si la compra es mayor a 50.000, envío gratis (opcional, puedes quitarlo si quieres cobrar siempre)
+    if (totalPrice >= 50000) return 0;
+    
+    // Si no ha seleccionado región, no cobramos aún (o cobramos el base)
+    if (!formData.region) return 0;
+
+    const region = formData.region;
+    
+    if (region === 'Metropolitana') {
+      return 3990;
+    } else if (
+      region === 'Arica y Parinacota' || 
+      region === 'Tarapacá' || 
+      region === 'Antofagasta' ||
+      region === 'Aysén' ||
+      region === 'Magallanes'
+    ) {
+      return 6990; // Extremo Norte / Sur
+    } else {
+      return 4990; // Resto (Centro / Sur)
+    }
+  };
+
+  const shippingCost = calculateShipping();
   const finalTotal = totalPrice + shippingCost;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -45,13 +76,10 @@ export function Checkout({ onNavigate }: CheckoutProps) {
   };
 
   const handleConfirmPayment = () => {
-    // Crear el objeto de orden compatible con el historial local
     const order: Order = {
-      id: `ORD-${Date.now()}`,
+      id: orderId,
       items: items.map(item => ({
         ...item,
-        // Hacemos un "truco" para que si tu tipo Order espera 'image', 
-        // le pasamos 'image_url' en su lugar.
         image: item.image_url || '', 
       })),
       total: finalTotal,
@@ -60,13 +88,22 @@ export function Checkout({ onNavigate }: CheckoutProps) {
       createdAt: new Date().toISOString()
     };
     
-    // Guardar en localStorage
     const existingOrders = JSON.parse(localStorage.getItem('aromas_orders') || '[]');
     localStorage.setItem('aromas_orders', JSON.stringify([order, ...existingOrders]));
     
     clearCart();
     setStep('success');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Función para abrir WhatsApp
+  const handleWhatsApp = () => {
+    // REEMPLAZA ESTE NÚMERO CON TU WHATSAPP REAL (con código de país, ej: 56912345678)
+    const phoneNumber = "56948031063"; 
+    const message = `¡Hola Aromas! 👋%0A%0AAcabo de realizar el pedido *${orderId}* por un total de *${formatPrice(finalTotal)}*.%0A%0AAdjunto mi comprobante de transferencia.`;
+    
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   // --- ESTADO VACÍO ---
@@ -97,18 +134,37 @@ export function Checkout({ onNavigate }: CheckoutProps) {
             ¡Pedido recibido!
           </h1>
           <p className="text-[#B9B2A6] mb-8">
-            Gracias por tu compra. Hemos enviado los detalles de pago a tu correo. 
-            Una vez confirmada la transferencia, procesaremos tu envío.
+            Para finalizar tu compra, necesitamos validar tu transferencia. 
+            Por favor, envíanos el comprobante haciendo clic en el botón de abajo.
           </p>
-          <div className="p-6 bg-[#141416] border border-[#2A2A2C] rounded-xl mb-8">
-            <p className="text-[#B9B2A6] text-sm mb-2">Número de pedido</p>
-            <p className="text-[#F4F2EE] font-mono text-lg">ORD-{Date.now()}</p>
+          
+          <div className="p-6 bg-[#141416] border border-[#2A2A2C] rounded-xl mb-8 space-y-4">
+            <div>
+                <p className="text-[#B9B2A6] text-sm mb-1">Número de pedido</p>
+                <p className="text-[#F4F2EE] font-mono text-lg">{orderId}</p>
+            </div>
+            <div className="pt-4 border-t border-[#2A2A2C]">
+                <p className="text-[#B9B2A6] text-sm mb-1">Total a transferir</p>
+                <p className="text-[#D7A04D] font-bold text-2xl">{formatPrice(finalTotal)}</p>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => onNavigate('catalog')} className="btn-gold">
+
+          <div className="flex flex-col gap-4 max-w-md mx-auto mb-8">
+            <button 
+                onClick={handleWhatsApp} 
+                className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+            >
+              <Send size={20} />
+              Enviar comprobante por WhatsApp
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8 border-t border-[#2A2A2C]">
+            <button onClick={() => onNavigate('catalog')} className="text-[#D7A04D] hover:text-[#F4F2EE] transition-colors">
               Seguir comprando
             </button>
-            <button onClick={() => onNavigate('home')} className="btn-outline-gold">
+            <span className="hidden sm:block text-[#2A2A2C]">|</span>
+            <button onClick={() => onNavigate('home')} className="text-[#B9B2A6] hover:text-[#F4F2EE] transition-colors">
               Volver al inicio
             </button>
           </div>
@@ -152,7 +208,7 @@ export function Checkout({ onNavigate }: CheckoutProps) {
                   <span className="text-[#F4F2EE]">{formatPrice(totalPrice)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#B9B2A6]">Envío</span>
+                  <span className="text-[#B9B2A6]">Envío ({formData.region})</span>
                   <span className={shippingCost === 0 ? 'text-green-500' : 'text-[#F4F2EE]'}>
                     {shippingCost === 0 ? 'GRATIS' : formatPrice(shippingCost)}
                   </span>
@@ -214,8 +270,8 @@ export function Checkout({ onNavigate }: CheckoutProps) {
               <ol className="space-y-3 text-[#B9B2A6] text-sm list-decimal list-inside">
                 <li>Realiza la transferencia por el monto total indicado.</li>
                 <li>Toma una foto o screenshot del comprobante.</li>
-                <li>Envíanos el comprobante por WhatsApp o correo.</li>
-                <li>Procesaremos tu pedido en un plazo de 24-48 horas hábiles.</li>
+                <li>Haz clic en "Confirmar pedido" para generar tu orden.</li>
+                <li>En la siguiente pantalla, envía el comprobante por WhatsApp.</li>
               </ol>
             </div>
 
@@ -223,7 +279,7 @@ export function Checkout({ onNavigate }: CheckoutProps) {
               onClick={handleConfirmPayment}
               className="w-full btn-gold py-4 text-lg"
             >
-              Confirmar pedido
+              Confirmar pedido y Enviar Comprobante
             </button>
           </div>
         </div>
@@ -382,7 +438,7 @@ export function Checkout({ onNavigate }: CheckoutProps) {
               <h2 className="text-lg font-semibold text-[#F4F2EE] mb-6">Resumen</h2>
               
               {/* Items */}
-              <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
+              <div className="space-y-4 mb-6 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-3">
                     <img
@@ -392,7 +448,6 @@ export function Checkout({ onNavigate }: CheckoutProps) {
                     />
                     <div className="flex-1">
                       <p className="text-[#F4F2EE] text-sm font-medium line-clamp-1">{item.name}</p>
-                      {/* Eliminamos item.brand porque no existe en la BD */}
                       <p className="text-[#B9B2A6] text-xs">x{item.quantity}</p>
                     </div>
                     <span className="text-[#F4F2EE] text-sm">{formatPrice(item.price * item.quantity)}</span>
@@ -405,19 +460,21 @@ export function Checkout({ onNavigate }: CheckoutProps) {
                   <span className="text-[#B9B2A6]">Subtotal</span>
                   <span className="text-[#F4F2EE]">{formatPrice(totalPrice)}</span>
                 </div>
-                {/* AQUI ESTABA EL ERROR DE SINTAXIS: Corregido */}
+                
                 <div className="flex justify-between text-sm">
-                  <span className="text-[#B9B2A6]">Envío</span>
-                  <span className={shippingCost === 0 ? 'text-green-500' : 'text-[#F4F2EE]'}>
-                    {shippingCost === 0 ? 'GRATIS' : formatPrice(shippingCost)}
+                  <span className="text-[#B9B2A6]">Envío {formData.region ? `(${formData.region})` : ''}</span>
+                  <span className={shippingCost === 0 ? 'text-green-500 font-medium' : 'text-[#F4F2EE]'}>
+                    {formData.region === '' 
+                      ? 'Calculado en siguiente paso' 
+                      : (shippingCost === 0 ? 'GRATIS' : formatPrice(shippingCost))}
                   </span>
                 </div>
                 
-                {shippingCost === 0 && (
+                {shippingCost === 0 && totalPrice >= 50000 && (
                   <p className="text-green-500 text-xs">¡Envío gratis en compras sobre $50.000!</p>
                 )}
                 
-                <div className="border-t border-[#2A2A2C] pt-3 flex justify-between">
+                <div className="border-t border-[#2A2A2C] pt-3 flex justify-between items-center">
                   <span className="text-[#F4F2EE] font-semibold">Total</span>
                   <span className="text-[#D7A04D] font-bold text-xl">{formatPrice(finalTotal)}</span>
                 </div>
@@ -437,6 +494,21 @@ export function Checkout({ onNavigate }: CheckoutProps) {
           </div>
         </div>
       </div>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #141416;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #2A2A2C;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #D7A04D;
+        }
+      `}</style>
     </div>
   );
 }
